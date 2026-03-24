@@ -1,0 +1,9 @@
+{
+  "name": "naver-keyword-api",
+  "version": "1.0.0",
+  "description": "네이버 키워드 검색량 + 블로그 검색 API 프록시",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
