@@ -22,7 +22,7 @@ async function callNaverAdsAPI(uri, params = {}) {
   const method = 'GET';
   const signature = generateSignature(timestamp, method, uri);
 
-  const queryString = new URLSearchParams(params).toString();
+  const queryString = new URLSearchParams(params).toString().replace(/\+/g, '%20');
   const url = `${BASE_URL}${uri}${queryString ? '?' + queryString : ''}`;
 
   const response = await fetch(url, {
