@@ -4,7 +4,7 @@ import crypto from 'crypto';
 const CUSTOMER_ID = process.env.NAVER_ADS_CUSTOMER_ID;
 const API_KEY     = process.env.NAVER_ADS_API_KEY;
 const SECRET_KEY  = process.env.NAVER_ADS_SECRET_KEY;
-const API_TOKEN   = process.env.API_ACCESS_TOKEN; // 외부 호출 보호용 (선택)
+const API_TOKEN   = process.env.API_ACCESS_TOKEN;
 
 const BASE_URL = 'https://api.naver.com';
 
@@ -16,15 +16,30 @@ function generateSignature(timestamp, method, uri) {
   return hmac.digest('base64');
 }
 
+// ─── 키워드 전처리 ───
+// 네이버 API는 hintKeywords에 공백을 허용하지 않음
+// "학점은행제 비용" → "학점은행제,비용" (쉼표 구분으로 변환)
+function preprocessKeyword(keyword) {
+  const trimmed = keyword.trim();
+  if (trimmed.includes(' ')) {
+    return trimmed.split(/\s+/).join(',');
+  }
+  return trimmed;
+}
+
 // ─── 네이버 검색광고 API 호출 ───
-async function callNaverAdsAPI(uri, hintKeywords) {
+async function callNaverAdsAPI(hintKeywords) {
+  const uri = '/keywordstool';
   const timestamp = String(Date.now());
   const method = 'GET';
   const signature = generateSignature(timestamp, method, uri);
 
-  const url = `${BASE_URL}${uri}?hintKeywords=${encodeURIComponent(hintKeywords)}&showDetail=1`;
+  // URL 객체로 안전하게 인코딩
+  const url = new URL(`${BASE_URL}${uri}`);
+  url.searchParams.set('hintKeywords', hintKeywords);
+  url.searchParams.set('showDetail', '1');
 
-  const response = await fetch(url, {
+  const response = await fetch(url.toString(), {
     method,
     headers: {
       'Content-Type': 'application/json; charset=UTF-8',
@@ -45,8 +60,7 @@ async function callNaverAdsAPI(uri, hintKeywords) {
 
 // ─── 키워드 계층 분류 ───
 function classifyKeywords(seedKeyword, keywordList) {
-  const headCandidates = seedKeyword.split(' ');
-  const headKeyword = headCandidates[0];
+  const headKeyword = seedKeyword.split(/[\s,]+/)[0];
 
   const results = {
     head: null,
@@ -120,13 +134,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const data = await callNaverAdsAPI('/keywordstool', q);
+    const processedKeyword = preprocessKeyword(q);
+
+    const data = await callNaverAdsAPI(processedKeyword);
     const keywordList = data.keywordList || [];
     const classified = classifyKeywords(q, keywordList);
 
     return res.status(200).json({
       success: true,
       query: q,
+      processedQuery: processedKeyword,
       totalResults: keywordList.length,
       classified: classified,
       raw: keywordList.slice(0, 30),
