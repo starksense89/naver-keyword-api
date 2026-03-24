@@ -17,13 +17,12 @@ function generateSignature(timestamp, method, uri) {
 }
 
 // ─── 네이버 검색광고 API 호출 ───
-async function callNaverAdsAPI(uri, params = {}) {
+async function callNaverAdsAPI(uri, hintKeywords) {
   const timestamp = String(Date.now());
   const method = 'GET';
   const signature = generateSignature(timestamp, method, uri);
 
-  const queryString = new URLSearchParams(params).toString().replace(/\+/g, '%20');
-  const url = `${BASE_URL}${uri}${queryString ? '?' + queryString : ''}`;
+  const url = `${BASE_URL}${uri}?hintKeywords=${encodeURIComponent(hintKeywords)}&showDetail=1`;
 
   const response = await fetch(url, {
     method,
@@ -46,20 +45,16 @@ async function callNaverAdsAPI(uri, params = {}) {
 
 // ─── 키워드 계층 분류 ───
 function classifyKeywords(seedKeyword, keywordList) {
-  // 1차(Head) 추출: 시드에서 공백 기준 첫 단어 (또는 가장 짧은 형태)
   const headCandidates = seedKeyword.split(' ');
-  const headKeyword = headCandidates[0]; // 예: "학점은행제"
+  const headKeyword = headCandidates[0];
 
   const results = {
     head: null,
-    body: [],  // 2차
-    longtail: [], // 3차
+    body: [],
+    longtail: [],
   };
 
   for (const kw of keywordList) {
-    const totalSearch = (kw.monthlyPcQcCnt || 0) + (kw.monthlyMobileQcCnt || 0);
-
-    // "< 10" 등 문자열로 오는 경우 처리
     const pcCount = typeof kw.monthlyPcQcCnt === 'number' ? kw.monthlyPcQcCnt : 10;
     const moCount = typeof kw.monthlyMobileQcCnt === 'number' ? kw.monthlyMobileQcCnt : 10;
     const total = pcCount + moCount;
@@ -74,30 +69,24 @@ function classifyKeywords(seedKeyword, keywordList) {
       monthlyMobileClkCnt: kw.monthlyMobileClkCnt || 0,
     };
 
-    // 1차(Head) 식별: 시드의 루트 키워드와 동일
     if (kw.relKeyword === headKeyword && !results.head) {
       results.head = kwData;
       continue;
     }
 
-    // 형태소 개수로 2차/3차 분류
     const wordCount = kw.relKeyword.split(' ').length;
 
     if (wordCount <= 2 && total >= 50) {
-      // 2차(Body): 형태소 2개 이하 + 월 합계 50 이상
       kwData.isGolden = total >= 50 && total <= 100;
       results.body.push(kwData);
     } else if (wordCount >= 3 && total >= 30) {
-      // 3차(Long-tail): 형태소 3개 이상 + 월 합계 30 이상
       results.longtail.push(kwData);
     }
   }
 
-  // 2차: 검색량 내림차순 정렬, 상위 10개
   results.body.sort((a, b) => b.total - a.total);
   results.body = results.body.slice(0, 10);
 
-  // 3차: 검색량 내림차순 정렬, 상위 15개
   results.longtail.sort((a, b) => b.total - a.total);
   results.longtail = results.longtail.slice(0, 15);
 
@@ -106,7 +95,6 @@ function classifyKeywords(seedKeyword, keywordList) {
 
 // ─── API 핸들러 ───
 export default async function handler(req, res) {
-  // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -115,7 +103,6 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // 접근 토큰 검증 (설정한 경우)
   if (API_TOKEN) {
     const authHeader = req.headers.authorization;
     if (!authHeader || authHeader !== `Bearer ${API_TOKEN}`) {
@@ -123,7 +110,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // 필수 환경변수 체크
   if (!CUSTOMER_ID || !API_KEY || !SECRET_KEY) {
     return res.status(500).json({ error: 'Naver Ads API credentials not configured' });
   }
@@ -134,15 +120,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 네이버 검색광고 키워드 도구 API 호출
-    const data = await callNaverAdsAPI('/keywordstool', {
-      hintKeywords: q,
-      showDetail: '1',
-    });
-
+    const data = await callNaverAdsAPI('/keywordstool', q);
     const keywordList = data.keywordList || [];
-
-    // 키워드 계층 분류
     const classified = classifyKeywords(q, keywordList);
 
     return res.status(200).json({
@@ -150,7 +129,6 @@ export default async function handler(req, res) {
       query: q,
       totalResults: keywordList.length,
       classified: classified,
-      // 원본 데이터도 포함 (필요 시 참조)
       raw: keywordList.slice(0, 30),
     });
 
