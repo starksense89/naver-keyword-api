@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>네이버 키워드 API 프록시</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; color: #333; }
+    h1 { font-size: 1.4rem; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.9rem; }
+    .endpoint { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 12px 0; }
+    .method { color: #2563eb; font-weight: bold; }
+    .status { color: #16a34a; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>네이버 키워드 API 프록시</h1>
+  <p class="status">✅ 서버 정상 작동 중</p>
+
+  <div class="endpoint">
+    <p><span class="method">GET</span> <code>/api/keywords?q=학점은행제+비용</code></p>
+    <p>키워드 검색량, 경쟁도, 연관키워드 조회 (네이버 검색광고 키워드 도구)</p>
+  </div>
+
+  <div class="endpoint">
+    <p><span class="method">GET</span> <code>/api/blog-titles?q=학점은행제+비용&count=10</code></p>
+    <p>네이버 블로그 상위 제목 수집 (경쟁 제목 분석용)</p>
+  </div>
+
+  <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 40px;">
+    이 서버는 claude.ai에서 web_fetch를 통해 호출됩니다.
+  </p>
+</body>
+</html>
