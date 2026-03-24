@@ -20,11 +20,7 @@ function generateSignature(timestamp, method, uri) {
 // 네이버 API는 hintKeywords에 공백을 허용하지 않음
 // "학점은행제 비용" → "학점은행제,비용" (쉼표 구분으로 변환)
 function preprocessKeyword(keyword) {
-  const trimmed = keyword.trim();
-  if (trimmed.includes(' ')) {
-    return trimmed.split(/\s+/).join(',');
-  }
-  return trimmed;
+  return keyword.trim().replace(/\s+/g, '');
 }
 
 // ─── 네이버 검색광고 API 호출 ───
